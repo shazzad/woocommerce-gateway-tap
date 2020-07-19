@@ -35,39 +35,12 @@
 
     initCardForm: function(){
       //pass your public key from tap's dashboard
-      var tap = Tapjsli('pk_test_alhOrg81RbEcBWdwfp9eHDji');
-      var elements = tap.elements({});
-      var style = {
-        base: {
-          color: '#535353',
-          lineHeight: '18px',
-          fontFamily: 'sans-serif',
-          fontSmoothing: 'antialiased',
-          fontSize: '16px',
-          '::placeholder': {
-            color: 'rgba(0, 0, 0, 0.26)',
-            fontSize:'15px'
-          }
-        },
-        invalid: {
-          color: 'red'
-        }
-      };
-      // input labels/placeholders
-      var labels = {
-          cardNumber:"Card Number",
-          expirationDate:"MM/YY",
-          cvv:"CVV",
-          cardHolder:"Card Holder Name"
-        };
-      //payment options
-      var paymentOptions = {
-        currencyCode:["KWD","USD","SAR"],
-        labels : labels,
-        TextDirection:'ltr'
-      }
+      var tapjsli = Tapjsli(tap.publishableApiKey);
+      var elements = tapjsli.elements({});
+
       //create element, pass style and payment options
-      var card = elements.create('card', {style: style},paymentOptions);
+      var card = elements.create('card', {style: tap.style}, tap.paymentOptions);
+
       //mount element
       card.mount('#tap-card-form-container');
 
@@ -78,12 +51,13 @@
 
       //card change event listener
       card.addEventListener('change', function(event) {
+        /*
         if (event.loaded) {
           console.log("UI loaded :"+event.loaded);
           console.log("current currency is :" + card.getCurrency())
         }
-
         console.log(event);
+        */
 
         if (event.error && ! skip_error_keys.includes(event.error.key)) {
           tap_checkout.$modal.find('.modal-notice').html('<div class="modal-error">' + event.error.message + '</div>').show();

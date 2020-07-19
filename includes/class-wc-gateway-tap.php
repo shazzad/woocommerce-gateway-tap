@@ -145,7 +145,7 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 		return array(
 			'tap'	   => 'payment_confirmed',
 			'result'   => 'success',
-			'messages' => '<div class="woocommerce-info">' . __( 'Payment Completed.', 'woocommerce-gateway-stcpay' ) . '</div>',
+			'messages' => '<div class="woocommerce-info">' . __( 'Payment Completed.', 'woocommerce-gateway-tap' ) . '</div>',
 			'redirect' => $order->get_checkout_order_received_url(),
 		);
 	}
@@ -216,14 +216,37 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 			'tap-checkout',
 			'tap',
 			array(
-				'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
-				'orderKey'         => isset( $_GET['key'] ) ? wp_unslash( $_GET['key'] ) : '',
-				'textOtpExpired'   => __( 'Token Expired, Please request a new Token', 'woocommerce-gateway-tap' ),
-				'textOtpExpiresIn' => sprintf(
-					__( 'Token expires in %s seconds', 'woocommerce-gateway-tap' ),
-					'{expires}'
-				),
-				'textEnterWalletNumber' => __( 'Enter Wallet Mobile No', 'woocommerce-gateway-tap' )
+				'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
+				'orderKey'          => isset( $_GET['key'] ) ? wp_unslash( $_GET['key'] ) : '',
+				'publishableApiKey' => $this->get_option( $this->get_option( 'environment' ) . '_publishable_api_key' ),
+				'paymentOptions'    => array(
+			        'currencyCode'     => array(
+						get_woocommerce_currency()
+					),
+			        'labels'           => array(
+			          'cardNumber'     => __( 'Card Number', 'woocommerce-gateway-tap' ),
+			          'expirationDate' => __( 'MM/YY', 'woocommerce-gateway-tap' ),
+			          'cvv'            => __( 'CVV', 'woocommerce-gateway-tap' ),
+			          'cardHolder'     => __( 'Card Holder Name', 'woocommerce-gateway-tap' )
+				  	),
+			        'TextDirection'    => is_rtl() ? 'rtl' : 'ltr'
+			    ),
+				'style' => array(
+			        'base' => array(
+						'color'         => '#535353',
+						'lineHeight'    => '18px',
+						'fontFamily'    => 'sans-serif',
+						'fontSmoothing' => 'antialiased',
+						'fontSize'      => '16px',
+						'::placeholder' => array(
+							'color'    => 'rgba(0, 0, 0, 0.26)',
+							'fontSize' => '15px'
+						)
+			        ),
+			        'invalid' => array(
+			          'color' => 'red'
+			        )
+				)
 			)
 		);
 
@@ -308,8 +331,8 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 					<div class="modal-notice"></div>
 					<div id="tap-card-form-container"></div><!-- Tap element will be here -->
 					<div class="form-actions">
-						<button class="submit-card-btn" type="button" data-text="<?php esc_attr_e( 'Submit', 'woocommerce-gateway-stcpay' ); ?>" data-loading="<?php esc_attr_e( 'Submitting', 'woocommerce-gateway-stcpay' ); ?>"><?php esc_html_e( 'Submit', 'woocommerce-gateway-stcpay' ); ?></button>
-						<button class="modal-close-btn" type="button"><?php esc_html_e( 'Cancel', 'woocommerce-gateway-stcpay' ); ?></button>
+						<button class="submit-card-btn" type="button" data-text="<?php esc_attr_e( 'Submit', 'woocommerce-gateway-tap' ); ?>" data-loading="<?php esc_attr_e( 'Submitting', 'woocommerce-gateway-tap' ); ?>"><?php esc_html_e( 'Submit', 'woocommerce-gateway-tap' ); ?></button>
+						<button class="modal-close-btn" type="button"><?php esc_html_e( 'Cancel', 'woocommerce-gateway-tap' ); ?></button>
 					</div>
 				</div>
 			</div>
