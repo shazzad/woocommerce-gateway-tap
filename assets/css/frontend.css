@@ -1,95 +1,41 @@
-/* Fix large payment gateway logo */
-.woocommerce-cart #payment .payment_method_tap img,
-.woocommerce-checkout #payment .payment_method_tap img,
-.woocommerce-checkout #payment .wc_payment_method img {
-	margin: 0 10px;
-    max-height: 32px;
-    vertical-align: middle;
+.tap-test-mode-title{
+	color:red;
+	font-size: 18px;
+	margin: 20px 0 10px;
+}
+.tap-test-mode-table{
+	margin-bottom: 0;
+}
+.tap-test-mode-table th,
+.tap-test-mode-table td{
+	padding: 3px;
+	font-size: 12px;
+}
+.tap-test-mode-message{
+	color: red;
+	padding: 5px;
+	margin-bottom: 30px;
+}
+.tap-test-mode-message a{
+	color: red;
+	text-decoration: underline;
 }
 
-/* Modal */
-.tap-modal{
-	z-index: 9999;
-	display: none;
-	position: fixed;
-	text-align: center;
-	align-items: center;
-	justify-content: center;
-	top:0; right: 0; bottom: 0; left: 0;
-	background-color: rgba(0, 0, 0, 0.3);
-}
-.tap-modal.show{
-	display: flex;
-}
-.tap-modal .modal-wrap{
-	width: 360px;
-	margin: 20px;
-	max-width: 90%;
-	border-radius: 5px;
-	background-color: #fff;
-	box-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
-}
-.tap-modal .modal-inner{
-	padding: 20px;
-}
-.tap-modal .modal-logo,
-.tap-modal .modal-heading{
-	margin-bottom: 10px;
-	text-align: center;
-}
-.tap-modal .modal-logo img {
-    float: none;
-    max-height: 40px;
-    display: inline-block;
-}
-
-.tap-modal label {
-	margin: 0;
-	display: block;
-}
-.modal-notice{
+#tap-card-notice > div{
 	margin: 10px 0;
+	padding: 10px 15px;
+	border: 1px solid;
 }
-.modal-error{
+#tap-card-notice .tap-message{
+	color: #0b7cac;
+	border-color: #0b7cac;
+}
+#tap-card-notice .tap-error{
 	color: #e2401c;
+	border-color: #e2401c;
 }
-.modal-notice > .modal-error,
-.modal-notice > .modal-message{
-	font-size: 13px;
-	line-height:14px;
-	text-align: center;
-}
-.tap-modal .form-actions{
-	display: flex;
-	flex-wrap: nowrap;
-	grid-gap: 10px;
-	margin-top: 20px;
-}
-.tap-modal .form-actions{
-	width: 100%;
-	text-align: center;
-}
-.tap-modal .submit-card-btn{
-	color: #fff;
-	border:none;
-	cursor: pointer;
-	padding: 8px 12px;
-	border-radius: 5px;
-	background-color: rgb(0, 175, 240);
-}
-.tap-modal .submit-card-btn:disabled{
-	opacity: 0.6;
-}
-.tap-modal .modal-close-btn,
-.tap-modal .modal-close-btn:hover,
-.tap-modal .modal-close-btn:focus,
-.tap-modal .modal-close-btn:active{
-	color: #333;
-	border:none;
-	outline: none;
-	cursor: pointer;
-	background: none;
-}
-.tap-modal .form-actions > button{
-	flex: 1 1 auto;
+#tap-card-form-container{
+	padding: 10px;
+	margin: 10px 0;
+	border: 1px solid #ddd;
 }

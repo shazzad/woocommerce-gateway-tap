@@ -23,17 +23,43 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 
 		// Display a message if staging environment is used.
 		if ( 'test' == $this->get_option( 'environment' ) ) {
-			$this->description .= '<p style="color:red; font-size: 18px; margin: 20px 0 10px;">';
+			$this->description .= '<div class="tap-test-mode-title">';
 			$this->description .= __( 'TEST MODE', 'woocommerce-gateway-tap' );
-			$this->description .= '</p>';
-			$this->description .= '<p style="padding: 10px; border: 1px solid red; font-size: 12px; line-height: 18px;">';
-			$this->description .= __( 'Use 5111111111111118, 4012000033330026 or 371449635398431 as card number.', 'woocommerce-gateway-tap' );
-			$this->description .= '</p>';
-			$this->description  = trim( $this->description );
+			$this->description .= '</div>';
+
+			$this->description .= '<table class="tap-test-mode-table">';
+			$this->description .= '<tr>
+				<th>' . __( 'Test Card') . '</th>
+				<th>' . __( 'CVV' ) . '</th>
+				<th>' . __( 'EXP' ) . '</th>
+				<th>' . __( 'OUTCOME' ) . '</th>
+			</tr>';
+			$this->description .= '<tr>
+				<th>5111111111111118</th>
+				<th>100</th>
+				<th>05/21</th>
+				<th>APPROVED</th>
+			</tr>';
+			$this->description .= '<tr>
+				<th>4012000033330026</th>
+				<th>100</th>
+				<th>05/22</th>
+				<th>DECLINED</th>
+			</tr>';
+			$this->description .= '<tr>
+				<th>4012000033330026</th>
+				<th>100</th>
+				<th>04/27</th>
+				<th>EXPIRED_CARD</th>
+			</tr>';
+			$this->description .= '</table>';
+
+			$this->description .= '<div class="tap-test-mode-message">';
+			$this->description .= sprintf( '<a href="%s" target="_blank">View available test card numbers, cvv, expiration dates.</a>', 'https://tappayments.api-docs.io/2.0/testing/test-card-numbers' );
+			$this->description .= '</div>';
 		}
 
 		add_action( 'woocommerce_update_options_payment_gateways_'. $this->id, array( $this, 'process_admin_options' ) );
-		add_action( 'wp_footer', array( $this, 'render_modal_card_form' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'payment_scripts' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_scripts' ) );
 
@@ -94,15 +120,18 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 		$client = new WC_Tap_Client();
 
 		if ( empty( $_POST['tap_token_value'] ) ) {
-			return array(
-				'tap'	   => 'request_payment',
-				'result'   => 'success',
-				'messages' => '<div class="woocommerce-error">Enter card details</div>',
-				'redirect' => $this->get_return_url( $order ),
-			);
+			wc_add_notice( __( 'Enter card details.', 'woocommerce-gateway-tap' ), 'error' );
 		}
 
-		wc_tap()->log( 'Tap confirming payment with Token - '. WC()->checkout->get_value( 'tap_token_value' ) );
+		wc_tap()->log( sprintf( 'Tap confirming payment with token - %s', WC()->checkout->get_value( 'tap_token_value' ) ) );
+
+		/*
+		wc_add_notice( __( 'Testing failure.', 'woocommerce-gateway-tap' ), 'error' );
+		return array(
+			'result'   => 'failed',
+			'messages' => '<div class="woocommerce-error">Testing failure.</div>'
+		);
+		*/
 
 		$create_charge = $client->create_charge(
 			WC()->checkout->get_value( 'tap_token_value' ),
@@ -131,19 +160,61 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 			);
 		}
 
-		update_post_meta( $order->get_id(), 'Tap Api Version', wc_clean( $create_charge['api_version'] ) );
-		update_post_meta( $order->get_id(), 'Tap Mode', $create_charge['live_mode'] ? 'Live' : 'Test' );
 		update_post_meta( $order->get_id(), 'Tap Status', wc_clean( $create_charge['status'] ) );
-		update_post_meta( $order->get_id(), 'Tap Card', wc_clean( $create_charge['card']['first_six'] ) . '******' . wc_clean( $payment['card']['last_four'] ) );
-		update_post_meta( $order->get_id(), 'Tap Customer Id', wc_clean( $create_charge['customer']['id'] ) );
-		update_post_meta( $order->get_id(), 'Tap Receipt Id', wc_clean( $create_charge['receipt']['id'] ) );
-		update_post_meta( $order->get_id(), 'Tap Payment Id', wc_clean( $create_charge['reference']['payment'] ) );
-		update_post_meta( $order->get_id(), 'Tap Charge Id', wc_clean( $create_charge['id'] ) );
 
-		$order->payment_complete( $create_charge['id'] );
+		if ( 'INITIATED' === $create_charge['status'] ) {
+			$order->set_transaction_id( $create_charge['id'] );
+			// Mark as on-hold (we're awaiting the payment).
+			$order->set_status( 'on-hold', __( 'Awaiting Tap payment', 'woocommerce-gateway-tap' ) );
+
+			$order->save();
+
+		} elseif ( 'CAPTURED' === $create_charge['status'] ) {
+			// put payment on hold
+			update_post_meta( $order->get_id(), 'Tap Api Version', wc_clean( $create_charge['api_version'] ) );
+			update_post_meta( $order->get_id(), 'Tap Mode', $create_charge['live_mode'] ? 'Live' : 'Test' );
+			update_post_meta( $order->get_id(), 'Tap Card', wc_clean( $create_charge['card']['first_six'] ) . '******' . wc_clean( $create_charge['card']['last_four'] ) );
+			update_post_meta( $order->get_id(), 'Tap Customer Id', wc_clean( $create_charge['customer']['id'] ) );
+			update_post_meta( $order->get_id(), 'Tap Receipt Id', wc_clean( $create_charge['receipt']['id'] ) );
+			update_post_meta( $order->get_id(), 'Tap Payment Id', wc_clean( $create_charge['reference']['payment'] ) );
+			update_post_meta( $order->get_id(), 'Tap Charge Id', wc_clean( $create_charge['id'] ) );
+
+			$order->payment_complete( $create_charge['id'] );
+
+		} elseif ( 'CANCELLED' === $create_charge['status'] ) {
+			$order->set_transaction_id( $create_charge['id'] );
+
+			$order->set_status(
+				'cancelled',
+				sprintf(
+					'Tap: %s (code: %s)',
+					$create_charge['response']['message'],
+					$create_charge['response']['code']
+				)
+			);
+
+			$order->save();
+
+		} else {
+			$order->set_transaction_id( $create_charge['id'] );
+			// Mark as failed.
+			$order->set_status(
+				'failed',
+				sprintf(
+					'Tap: %s (code: %s)',
+					$create_charge['response']['message'],
+					$create_charge['response']['code']
+				)
+			);
+
+			$order->save();
+		}
+
+		// Remove cart.
+		WC()->cart->empty_cart();
 
 		return array(
-			'tap'	   => 'payment_confirmed',
+			'tap'	   => 'payment_completed',
 			'result'   => 'success',
 			'messages' => '<div class="woocommerce-info">' . __( 'Payment Completed.', 'woocommerce-gateway-tap' ) . '</div>',
 			'redirect' => $order->get_checkout_order_received_url(),
@@ -156,7 +227,11 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 			echo wpautop( wptexturize( $description ) );
 		}
 
-		echo '<input type="hidden" id="tap-token-value" name="tap_token_value" value="" />';
+		?>
+		<input type="hidden" id="tap-token-value" name="tap_token_value" value="" />
+		<div id="tap-card-notice"></div>
+		<div id="tap-card-form-container"></div><!-- Tap element will be here -->
+		<?php
 	}
 
 	/**
@@ -214,7 +289,7 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 
 		wp_localize_script(
 			'tap-checkout',
-			'tap',
+			'tap_checkout_params',
 			array(
 				'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
 				'orderKey'          => isset( $_GET['key'] ) ? wp_unslash( $_GET['key'] ) : '',
@@ -222,6 +297,9 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 				'paymentOptions'    => array(
 			        'currencyCode'     => array(
 						get_woocommerce_currency()
+					),
+					'paymentAllowed'   => array(
+						'MASTERCARD', 'VISA', 'AMERICAN_EXPRESS'
 					),
 			        'labels'           => array(
 			          'cardNumber'     => __( 'Card Number', 'woocommerce-gateway-tap' ),
@@ -246,7 +324,11 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 			        'invalid' => array(
 			          'color' => 'red'
 			        )
-				)
+				),
+				'checkoutButtonText' => $this->order_button_text,
+				'checkoutButtonProcessingText' => __( 'Processing order' ),
+				'validatingCardText' => __( 'Validating card...' ),
+				'cardValidatedText' => __( 'Card validated' )
 			)
 		);
 
@@ -310,33 +392,5 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 			WC_TAP_VERSION,
 			true
 		);
-	}
-
-	public function render_modal_card_form() {
-		if ( ! is_cart() && ! is_checkout() && ! isset( $_GET['pay_for_order'] ) ) {
-			return;
-		}
-
-		$available_gateways = WC()->payment_gateways()->get_available_payment_gateways();
-		if ( ! isset( $available_gateways[ $this->id ] ) ) {
-			return;
-		}
-
-		?>
-		<div id="tap-card-modal" class="tap-modal">
-			<div class="modal-wrap">
-				<div class="modal-inner">
-					<div class="modal-logo"><img src="<?php echo  WC_TAP_URL . '/assets/images/tap-logo.png'; ?>" /></div>
-					<div class="modal-heading"><?php _e( 'Pay With Card' ); ?></div>
-					<div class="modal-notice"></div>
-					<div id="tap-card-form-container"></div><!-- Tap element will be here -->
-					<div class="form-actions">
-						<button class="submit-card-btn" type="button" data-text="<?php esc_attr_e( 'Submit', 'woocommerce-gateway-tap' ); ?>" data-loading="<?php esc_attr_e( 'Submitting', 'woocommerce-gateway-tap' ); ?>"><?php esc_html_e( 'Submit', 'woocommerce-gateway-tap' ); ?></button>
-						<button class="modal-close-btn" type="button"><?php esc_html_e( 'Cancel', 'woocommerce-gateway-tap' ); ?></button>
-					</div>
-				</div>
-			</div>
-		</div>
-		<?php
 	}
 }
