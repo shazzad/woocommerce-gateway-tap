@@ -139,9 +139,6 @@ class WC_Tap_Client {
 			'source' => array(
 				'id' => $token
 			),
-			'post' => array(
-				'url' => 'http://your_website.com/post_url'
-			),
 			'redirect' => array(
 				'url' => $order->get_checkout_order_received_url()
 			)

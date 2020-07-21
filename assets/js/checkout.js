@@ -3,28 +3,75 @@
 
   var tap_checkout = {
     $checkout_form: $( 'form.checkout' ),
+    $orderpay_form: $( 'form#order_review' ),
     tapjsli: null,
     card: null,
     getSelectedPaymentMethod: function(){
       return $( '.woocommerce input[name="payment_method"]:checked' ).val();
     },
     addCardError: function(error){
-      $( '#tap-card-notice' ).html('<div class="tap-error">' + error + '</div>').show();
+      /*
+      if (this.isOrderPayPage()) {
+        $( '.woocommerce-notices-wrapper' ).html( '<div class="woocommerce-error tap-card-error">' + error + '</div>' );
+      } else {
+        if ( $( '.woocommerce-NoticeGroup-checkout .tap-card-error' ).length > 0 ) {
+          $( '.woocommerce-NoticeGroup-checkout .tap-card-error' ).html( error );
+        } else {
+          $( '.woocommerce-NoticeGroup-checkout' ).append( '<div class="woocommerce-error tap-card-error">' + error + '</div>' );
+        }
+      }*/
+     $( '#tap-card-notice' ).html('<div class="tap-error">' + error + '</div>').show();
     },
-    addCardMessage: function(message){
-      $( '#tap-card-notice' ).html('<div class="tap-message">' + message + '</div>').show();
+    removeCardError: function(){
+      //$( '.woocommerce-NoticeGroup-checkout .tap-card-error' ).remove();
+      $( '#tap-card-notice' ).empty().hide();
     },
-    removeCardNotice: function(message){
-      $( '#tap-card-notice' ).hide().empty();
+    isCardFormLoading: function() {
+      if (this.isOrderPayPage()) {
+        return tap_checkout.$orderpay_form.is( '.tap-loading' );
+      } else {
+        return tap_checkout.$checkout_form.is( '.tap-loading' );
+      }
+		},
+    hasCardFormLoaded: function() {
+      if (this.isOrderPayPage()) {
+        return tap_checkout.$orderpay_form.is( '.tap-loaded' );
+      } else {
+        return tap_checkout.$checkout_form.is( '.tap-loaded' );
+      }
+		},
+    cardFormLoading: function() {
+      if (this.isOrderPayPage()) {
+        tap_checkout.$orderpay_form.removeClass( 'tap-loaded' ).addClass( 'tap-loading' );
+      } else {
+        tap_checkout.$checkout_form.removeClass( 'tap-loaded' ).addClass( 'tap-loading' );
+      }
+		},
+		cardFormLoaded: function() {
+      if (this.isOrderPayPage()) {
+        tap_checkout.$orderpay_form.removeClass( 'tap-loading' ).addClass( 'tap-loaded' );
+      } else {
+        tap_checkout.$checkout_form.removeClass( 'tap-loading' ).addClass( 'tap-loaded' );
+      }
     },
-    initCardForm: function(){
-      if ('tap' !== tap_checkout.getSelectedPaymentMethod() ) {
+
+    maybeInitCardForm: function(e){
+      console.log( 'maybeInitCardForm' );
+      console.log( tap_checkout.isCardFormLoading() );
+      console.log( tap_checkout.hasCardFormLoaded() );
+      // Already loading/loaded
+      if ( tap_checkout.isCardFormLoading() || tap_checkout.hasCardFormLoaded() || 'tap' !== tap_checkout.getSelectedPaymentMethod() ) {
         return false;
       }
 
-      //console.log('initCardForm');
-      $('#tap-card-form-container').empty();
-      // tap_checkout.addCardMessage('Loading card form');
+      if ( 'tap' === tap_checkout.getSelectedPaymentMethod() ) {
+        tap_checkout.initCardForm();
+      }
+    },
+    initCardForm: function(){
+      $( '#tap-card-form-container' ).empty();
+      tap_checkout.clearCardToken();
+      tap_checkout.cardFormLoading();
 
       //create element, pass style and payment options
       tap_checkout.tapjsli = Tapjsli(tap_checkout_params.publishableApiKey);
@@ -33,32 +80,41 @@
       //mount element
       tap_checkout.card.mount('#tap-card-form-container');
 
-      var skip_error_keys = [
-        'card_number_required',
-        'error_invalid_expiry_characters',
-        'error_invalid_cvv_characters'
-      ];
-
       //card change event listener
       tap_checkout.card.addEventListener('change', function(event) {
         if (event.loaded) {
-          // console.log("UI loaded :" + event.loaded);
-          tap_checkout.removeCardNotice();
+          tap_checkout.cardFormLoaded();
         }
-        // console.log(event);
-
-        /*
-        if (event.error && ! skip_error_keys.includes(event.error.key)) {
-          $('#tap-card-notice').html('<div class="tap-error">' + event.error.message + '</div>').show();
-        } else {
-          $('#tap-card-notice').empty().hide();
-        }
-        */
       });
     },
-		blockCheckout: function() {
-			var form_data = tap_checkout.$checkout_form.data();
 
+    checkoutMissingRequiredFields: function() {
+      return tap_checkout.$checkout_form.find('.woocommerce-invalid-required-field').length > 0
+    },
+
+    hasCardToken: function() {
+      return $( '#tap-token-value' ).val()
+    },
+
+    clearCardToken: function() {
+      return $( '#tap-token-value' ).val('')
+    },
+
+    onCheckoutPlaceOrder: function(e){
+      e.preventDefault();
+
+      console.log( tap_checkout.hasCardToken() );
+
+      // we already have a token or checkout form is missing required fields.
+      if ( tap_checkout.hasCardToken() || tap_checkout.isCardFormLoading() || ! tap_checkout.hasCardFormLoaded() ) {
+        // unbind restrictor
+
+        tap_checkout.$checkout_form.unbind( 'checkout_place_order_tap', tap_checkout.onCheckoutPlaceOrder );
+        $( '#place_order' ).trigger( 'click' );
+        return true;
+      }
+
+			var form_data = tap_checkout.$checkout_form.data();
 			if ( 1 !== form_data['blockUI.isBlocked'] ) {
 				tap_checkout.$checkout_form.block({
 					message: null,
@@ -68,15 +124,8 @@
 					}
 				});
 			}
-		},
-
-    onCheckoutPlaceOrder: function(e){
-      e.preventDefault();
-
-      tap_checkout.addCardError( tap_checkout_params.validatingCardText );
-
       tap_checkout.$checkout_form.addClass( 'processing' );
-      tap_checkout.blockCheckout();
+      $( '#place_order' ).html( tap_checkout_params.checkoutButtonProcessingText );
 
       tap_checkout.tapjsli.createToken(tap_checkout.card)
       .then(function(result) {
@@ -84,22 +133,22 @@
 
         if (result.error) {
           tap_checkout.addCardError( result.error.message );
-        } else {
-          tap_checkout.removeCardNotice();
+          $( '#place_order' ).html( tap_checkout_params.checkoutButtonText );
 
-          $( '#place_order' ).html( tap_checkout_params.checkoutButtonProcessingText );
+        } else {
+          tap_checkout.removeCardError();
 
           $( '#tap-token-value' ).val( result.id );
 
           // unbind restrictor
           tap_checkout.$checkout_form.unbind( 'checkout_place_order_tap', tap_checkout.onCheckoutPlaceOrder );
-
           $( '#place_order' ).trigger( 'click' );
 
           return true;
         }
       });
 
+      console.log( 'ending false' );
       return false;
     },
 
@@ -108,51 +157,77 @@
       return $( document.body ).hasClass( 'woocommerce-order-pay' );
     },
     onSubmitOrderPayForm: function(e){
-      if ('tap' === tap_checkout.getSelectedPaymentMethod() && ! $( '#order_review' ).hasClass('confirmed') ) {
-        e.preventDefault();
-
-        if (! $('#tap-mobile-no').val()) {
-
-          setTimeout(function(){
-            $('#order_review').unblock();
-          }, 1);
-
-          $('.field-tap-mobile-no .field-notice')
-            .html('<div class="woocommerce-error">' + tap_checkout_params.textEnterWalletNumber + '</div>');
-        } else {
-          var data = {
-            action: 'tap_request_otp',
-            order_key: tap_checkout_params.orderKey,
-            mobile_no: $('#tap-mobile-no').val()
-          };
-
-          $.post(tap_checkout_params.ajaxUrl, data)
-          .done(function(r){
-            if (r.success) {
-              tap_checkout.displayModal();
-            } else {
-              tap_checkout.hideModal();
-              $('#order_review').unblock();
-            }
-          });
-        }
-
-        return false;
+      if ('tap' !== tap_checkout.getSelectedPaymentMethod()) {
+        return true;
       }
+
+      // we already have a token or checkout form is missing required fields.
+      if ( tap_checkout.hasCardToken() || tap_checkout.isCardFormLoading() || ! tap_checkout.hasCardFormLoaded() ) {
+        // unbind restrictor
+        return true;
+      }
+
+      e.preventDefault();
+
+      tap_checkout.tapjsli.createToken(tap_checkout.card)
+      .then(function(result) {
+        console.log(result);
+        // tap_checkout.cardFormLoaded();
+
+        if (result.error) {
+          $('#order_review').unblock();
+          tap_checkout.addCardError( result.error.message );
+        } else {
+          tap_checkout.removeCardError();
+
+          $( '#place_order' ).html( tap_checkout_params.checkoutButtonProcessingText );
+          $( '#tap-token-value' ).val( result.id );
+          $( '#place_order' ).trigger( 'click' );
+        }
+      });
+
+      return false;
     },
 
     init: function(){
       // Order Pay ====
       if ( this.isOrderPayPage() ) {
-        $('#order_review').on( 'submit', tap_checkout.onSubmitOrderPayForm);
+        this.$orderpay_form.on( 'submit', tap_checkout.onSubmitOrderPayForm );
+
+        this.$orderpay_form.on( 'click', 'input[name="payment_method"]', function(e){
+          // human click
+          if ( e.hasOwnProperty('originalEvent') ) {
+            // tap_checkout.removeCardError();
+            tap_checkout.maybeInitCardForm();
+          }
+        });
       }
 
       // Checkout ====
       this.$checkout_form.on( 'checkout_place_order_tap', tap_checkout.onCheckoutPlaceOrder );
 
-      this.$checkout_form.on( 'click', 'input[name="payment_method"]', tap_checkout.initCardForm);
 
-      tap_checkout.initCardForm();
+      this.$checkout_form.on( 'click', 'input[name="payment_method"]', function(e){
+        // human click
+        if ( e.hasOwnProperty('originalEvent') ) {
+          // tap_checkout.removeCardError();
+          tap_checkout.maybeInitCardForm();
+        }
+      });
+
+      // Re-init.
+      $( document.body ).on( 'updated_checkout', function(){
+        if ( 'tap' === tap_checkout.getSelectedPaymentMethod() ) {
+          tap_checkout.initCardForm();
+        }
+      });
+
+      // Clear token on error.
+      $( document.body ).on( 'checkout_error', function(){
+        $( '#place_order' ).html( tap_checkout_params.checkoutButtonText );
+        tap_checkout.clearCardToken();
+        tap_checkout.$checkout_form.on( 'checkout_place_order_tap', tap_checkout.onCheckoutPlaceOrder );
+      });
     },
   };
 

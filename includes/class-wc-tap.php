@@ -13,7 +13,7 @@ final class WC_Tap {
 	/**
 	 * @var plugin version
 	 */
-	public $version = '0.0.1';
+	public $version = '1.0.0';
 
 	/**
 	 * @var Singleton The reference the *Singleton* instance of this class
@@ -86,7 +86,7 @@ final class WC_Tap {
 			self::$settings = get_option( 'woocommerce_tap_settings', array() );
 		}
 
-		WC_Tap_Hooks::init();
+		# WC_Tap_Hooks::init();
 	}
 
 	/**
@@ -94,9 +94,12 @@ final class WC_Tap {
 	 */
 	private function includes() {
 		require WC_TAP_DIR . '/includes/class-wc-tap-utils.php';
-		require WC_TAP_DIR . '/includes/class-wc-gateway-tap.php';
 		require WC_TAP_DIR . '/includes/class-wc-tap-client.php';
-		require WC_TAP_DIR . '/includes/class-wc-tap-hooks.php';
+		#require WC_TAP_DIR . '/includes/class-wc-tap-hooks.php';
+
+		require WC_TAP_DIR . '/includes/class-wc-tap-response.php';
+		require WC_TAP_DIR . '/includes/class-wc-tap-api-handler.php';
+		require WC_TAP_DIR . '/includes/class-wc-gateway-tap.php';
 	}
 
 	/**

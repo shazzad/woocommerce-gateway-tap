@@ -65,10 +65,12 @@ return array_merge(
 		'debug' => array(
 			'title'       => __( 'Debug log', 'woocommerce-gateway-tap' ),
 			'type'        => 'checkbox',
-			'label'       => 'Enable logging',
+			'label'       => __( 'Enable logging', 'woocommerce-gateway-tap' ),
 			'description' => sprintf(
 				/* translators: %1$s: Login file path. %2$s: Login file url. */
-				__( 'Log Tap events, such as Webhook requests, inside %1$s. Note: this may log personal information. We recommend using this for debugging purposes only and deleting the logs when finished. <a href="%2$s">View logs here</a>', 'woocommerce-gateway-tap' ),
+				__( 'Log Tap events, such as Webhook requests, inside %1$s.
+				Note: this may log personal information. We recommend using this for debugging purposes only and deleting the logs when finished.
+				<a href="%2$s">View logs here</a>', 'woocommerce-gateway-tap' ),
 				'<code>' . WC_Log_Handler_File::get_log_file_path( 'tap' ) . '</code>',
 				admin_url( 'admin.php?page=wc-status&tab=logs' )
 			),

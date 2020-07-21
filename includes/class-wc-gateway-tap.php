@@ -6,6 +6,7 @@
  * @extends     WC_Payment_Gateway
 **/
 class WC_Gateway_Tap extends WC_Payment_Gateway {
+	protected $api_handler;
 	/**
 	 * Constructor
 	 */
@@ -58,6 +59,8 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 			$this->description .= sprintf( '<a href="%s" target="_blank">View available test card numbers, cvv, expiration dates.</a>', 'https://tappayments.api-docs.io/2.0/testing/test-card-numbers' );
 			$this->description .= '</div>';
 		}
+
+		$this->api_handler = new WC_Tap_Api_Handler();
 
 		add_action( 'woocommerce_update_options_payment_gateways_'. $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'payment_scripts' ) );
@@ -121,100 +124,59 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 
 		if ( empty( $_POST['tap_token_value'] ) ) {
 			wc_add_notice( __( 'Enter card details.', 'woocommerce-gateway-tap' ), 'error' );
+			return;
 		}
 
-		wc_tap()->log( sprintf( 'Tap confirming payment with token - %s', WC()->checkout->get_value( 'tap_token_value' ) ) );
-
-		/*
-		wc_add_notice( __( 'Testing failure.', 'woocommerce-gateway-tap' ), 'error' );
-		return array(
-			'result'   => 'failed',
-			'messages' => '<div class="woocommerce-error">Testing failure.</div>'
+		wc_tap()->log(
+			sprintf(
+				/* translators: %s: Card token */
+				__( 'Tap confirming payment with token - %s', 'woocommerce-gateway-tap' ),
+				WC()->checkout->get_value( 'tap_token_value' )
+			)
 		);
-		*/
 
-		$create_charge = $client->create_charge(
+		$payment = $client->create_charge(
 			WC()->checkout->get_value( 'tap_token_value' ),
 			$order
 		);
 
-		if ( is_wp_error( $create_charge ) ) {
+		if ( is_wp_error( $payment ) ) {
 			wc_tap()->log(
 				sprintf(
 					/* translators: %s: Error message, may contain html */
 					__( 'Tap API Error: %s', 'woocommerce-gateway-tap' ),
-					$create_charge->get_error_message()
+					$payment->get_error_message()
 				)
 			);
 
-			$error = $create_charge->get_error_message();
-
-			if ( ! in_array( $create_charge->get_error_code(), array( 'api_error', 'customer_error', 'internal_error', 'tap_error' ) ) ) {
-				$error = __( 'Could not process your request. Please try later, or use other payment gateway.', 'woocommerce-gateway-tap' );
+			$error = $payment->get_error_message();
+			if ( ! in_array( $payment->get_error_code(), array( 'api_error', 'customer_error', 'internal_error', 'tap_error' ) ) ) {
+				$error = __( 'Could not process your order. Please try later, or use other payment gateway.', 'woocommerce-gateway-tap' );
 			}
 
-			return array(
-				'result'   => 'success',
-				'messages' => '<div class="woocommerce-error">' . $error . '</div>',
-				'redirect' => $this->get_return_url( $order ),
-			);
+			wc_add_notice( $error, 'error' );
+			return;
 		}
 
-		update_post_meta( $order->get_id(), 'Tap Status', wc_clean( $create_charge['status'] ) );
+		if ( ! isset( $payment['status'] ) || 'INITIATED' === $payment['status'] ) {
+			wc_add_notice( __( 'Sorry, we can not process this card. Your card required redirection to tap, which is not impelemted in our checkout system.', 'woocommerce-gateway-tap' ), 'error' );
+			return;
+		}
 
-		if ( 'INITIATED' === $create_charge['status'] ) {
-			$order->set_transaction_id( $create_charge['id'] );
-			// Mark as on-hold (we're awaiting the payment).
-			$order->set_status( 'on-hold', __( 'Awaiting Tap payment', 'woocommerce-gateway-tap' ) );
+		$payment = wc_clean( $payment );
 
-			$order->save();
+		// Payment captured
+		if ( 'CAPTURED' === $payment['status'] ) {
+			$this->api_handler->tap_status_captured( $order, $payment );
 
-		} elseif ( 'CAPTURED' === $create_charge['status'] ) {
-			// put payment on hold
-			update_post_meta( $order->get_id(), 'Tap Api Version', wc_clean( $create_charge['api_version'] ) );
-			update_post_meta( $order->get_id(), 'Tap Mode', $create_charge['live_mode'] ? 'Live' : 'Test' );
-			update_post_meta( $order->get_id(), 'Tap Card', wc_clean( $create_charge['card']['first_six'] ) . '******' . wc_clean( $create_charge['card']['last_four'] ) );
-			update_post_meta( $order->get_id(), 'Tap Customer Id', wc_clean( $create_charge['customer']['id'] ) );
-			update_post_meta( $order->get_id(), 'Tap Receipt Id', wc_clean( $create_charge['receipt']['id'] ) );
-			update_post_meta( $order->get_id(), 'Tap Payment Id', wc_clean( $create_charge['reference']['payment'] ) );
-			update_post_meta( $order->get_id(), 'Tap Charge Id', wc_clean( $create_charge['id'] ) );
-
-			$order->payment_complete( $create_charge['id'] );
-
-		} elseif ( 'CANCELLED' === $create_charge['status'] ) {
-			$order->set_transaction_id( $create_charge['id'] );
-
-			$order->set_status(
-				'cancelled',
-				sprintf(
-					'Tap: %s (code: %s)',
-					$create_charge['response']['message'],
-					$create_charge['response']['code']
-				)
-			);
-
-			$order->save();
+		} elseif ( 'CANCELLED' === $payment['status'] ) {
+			$this->api_handler->tap_status_cancelled( $order, $payment );
 
 		} else {
-			$order->set_transaction_id( $create_charge['id'] );
-			// Mark as failed.
-			$order->set_status(
-				'failed',
-				sprintf(
-					'Tap: %s (code: %s)',
-					$create_charge['response']['message'],
-					$create_charge['response']['code']
-				)
-			);
-
-			$order->save();
+			$this->api_handler->tap_status_failed( $order, $payment );
 		}
 
-		// Remove cart.
-		WC()->cart->empty_cart();
-
 		return array(
-			'tap'	   => 'payment_completed',
 			'result'   => 'success',
 			'messages' => '<div class="woocommerce-info">' . __( 'Payment Completed.', 'woocommerce-gateway-tap' ) . '</div>',
 			'redirect' => $order->get_checkout_order_received_url(),
@@ -230,7 +192,7 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 		?>
 		<input type="hidden" id="tap-token-value" name="tap_token_value" value="" />
 		<div id="tap-card-notice"></div>
-		<div id="tap-card-form-container"></div><!-- Tap element will be here -->
+		<div id="tap-card-form-container"></div>
 		<?php
 	}
 
@@ -299,7 +261,9 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 						get_woocommerce_currency()
 					),
 					'paymentAllowed'   => array(
-						'MASTERCARD', 'VISA', 'AMERICAN_EXPRESS'
+						'MASTERCARD',
+						'VISA',
+						'AMERICAN_EXPRESS'
 					),
 			        'labels'           => array(
 			          'cardNumber'     => __( 'Card Number', 'woocommerce-gateway-tap' ),

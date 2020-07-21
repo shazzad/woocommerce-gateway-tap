@@ -1,0 +1,215 @@
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: WooCommerce Tap Gateway\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-07-21 20:51+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: \n"
+"Language: \n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Loco https://localise.biz/\n"
+"X-Loco-Version: 2.4.0; wp-5.4.2"
+
+#. %s: Gateway Environment - Staging, Production
+#: includes/settings-tap.php:28
+#, php-format
+msgid "%s Publishable API Key:"
+msgstr ""
+
+#. %s: Gateway Environment - Staging, Production
+#: includes/settings-tap.php:18
+#, php-format
+msgid "%s Secret API Key:"
+msgstr ""
+
+#. %s: Error message, may contain html
+#: includes/class-wc-tap-response.php:23
+#, php-format
+msgid "Aborting, Order # %d is already complete."
+msgstr ""
+
+#: includes/settings-tap.php:62
+msgid "Advanced options"
+msgstr ""
+
+#: includes/class-wc-tap-response.php:33
+msgid "Amount miss-matched"
+msgstr ""
+
+#: includes/class-wc-tap-client.php:218
+msgid "API Error"
+msgstr ""
+
+#: includes/settings-tap.php:80
+msgid "API Settings"
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:272
+msgid "Card Holder Name"
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:269
+msgid "Card Number"
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:154
+msgid ""
+"Could not process your order. Please try later, or use other payment gateway."
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:271
+msgid "CVV"
+msgstr ""
+
+#: includes/settings-tap.php:66
+msgid "Debug log"
+msgstr ""
+
+#: includes/settings-tap.php:57
+msgid "Description of Tap Payment Gateway that users sees on Checkout page."
+msgstr ""
+
+#: includes/settings-tap.php:55
+msgid "Description:"
+msgstr ""
+
+#: includes/settings-tap.php:68
+msgid "Enable logging"
+msgstr ""
+
+#: includes/settings-tap.php:40
+msgid "Enable:"
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:126
+msgid "Enter card details."
+msgstr ""
+
+#: includes/settings-tap.php:84
+msgid "Environment"
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:316
+msgid "Gateway disabled"
+msgstr ""
+
+#: includes/class-wc-tap-client.php:199
+msgid "Invalid merchant id or ssl certificates."
+msgstr ""
+
+#. %1$s: Login file path. %2$s: Login file url.
+#: includes/settings-tap.php:71
+#, php-format
+msgid ""
+"Log Tap events, such as Webhook requests, inside %1$s.\n"
+"\t\t\t\tNote: this may log personal information. We recommend using this for "
+"debugging purposes only and deleting the logs when finished.\n"
+"\t\t\t\t<a href=\"%2$s\">View logs here</a>"
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:270
+msgid "MM/YY"
+msgstr ""
+
+#: includes/settings-tap.php:58
+msgid "Pay securely by Tap wallet."
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:85
+msgid "Pay with Tap"
+msgstr ""
+
+#: includes/class-wc-tap-response.php:39 includes/class-wc-tap-response.php:74
+#: includes/class-wc-tap-response.php:97
+#, php-format
+msgid "Payment %1$s (%2$s - %3$s) via %4$s."
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:181
+msgid "Payment Completed."
+msgstr ""
+
+#: includes/settings-tap.php:32
+msgid "public api key."
+msgstr ""
+
+#: includes/settings-tap.php:22
+msgid "secret api key."
+msgstr ""
+
+#. Author of the plugin
+msgid "Shazzad Hossain Khan"
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:162
+msgid ""
+"Sorry, we can not process this card. Your card required redirection to tap, "
+"which is not impelemted in our checkout system."
+msgstr ""
+
+#. Description of the plugin
+msgid "Take payments using Tap mobile wallet service."
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:86 includes/settings-tap.php:51
+msgid "Tap"
+msgstr ""
+
+#. %s: Error message, may contain html
+#: includes/class-wc-gateway-tap.php:147
+#, php-format
+msgid "Tap API Error: %s"
+msgstr ""
+
+#. %s: Card token
+#: includes/class-wc-gateway-tap.php:133
+#, php-format
+msgid "Tap confirming payment with token - %s"
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:87
+msgid "Tap payment gateway for WooCommerce."
+msgstr ""
+
+#: woocommerce-gateway-tap.php:41
+msgid "Tap requires mimumum WooCommerce 3.0. Please upgrade."
+msgstr ""
+
+#. 1. URL link.
+#: woocommerce-gateway-tap.php:32
+#, php-format
+msgid ""
+"Tap requires WooCommerce to be installed and active. You can download %s "
+"here."
+msgstr ""
+
+#: includes/class-wc-gateway-tap.php:28
+msgid "TEST MODE"
+msgstr ""
+
+#: includes/settings-tap.php:50
+msgid "Title of Tap Payment Gateway that users see on Checkout page."
+msgstr ""
+
+#: includes/settings-tap.php:48
+msgid "Title:"
+msgstr ""
+
+#: includes/class-wc-tap-client.php:223
+msgid "Unknown Response."
+msgstr ""
+
+#. %s: Amount.
+#: includes/class-wc-tap-response.php:129
+#, php-format
+msgid "Validation error: Tap amounts do not match (amount %s)."
+msgstr ""
+
+#. Name of the plugin
+msgid "WooCommerce Tap Gateway"
+msgstr ""
