@@ -6,6 +6,7 @@
  * @extends     WC_Payment_Gateway
 **/
 class WC_Gateway_Tap extends WC_Payment_Gateway {
+
 	protected $api_handler;
 	/**
 	 * Constructor
@@ -69,11 +70,6 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 		if ( ! $this->is_valid_for_use() ) {
 			$this->enabled = 'no';
 		}
-		/*
-		if ( ! $this->is_available() ) {
-			$this->enabled = 'no';
-		}
-		*/
 	}
 
 	/**
@@ -127,28 +123,16 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 			return;
 		}
 
-		wc_tap()->log(
-			sprintf(
-				/* translators: %s: Card token */
-				__( 'Tap confirming payment with token - %s', 'woocommerce-gateway-tap' ),
-				WC()->checkout->get_value( 'tap_token_value' )
-			)
-		);
-
 		$payment = $client->create_charge(
 			WC()->checkout->get_value( 'tap_token_value' ),
 			$order
 		);
 
-		if ( is_wp_error( $payment ) ) {
-			wc_tap()->log(
-				sprintf(
-					/* translators: %s: Error message, may contain html */
-					__( 'Tap API Error: %s', 'woocommerce-gateway-tap' ),
-					$payment->get_error_message()
-				)
-			);
+		// Log response
+		wc_tap()->log( 'Payment Response' );
+		wc_tap()->log( wc_print_r( $payment, true ) );
 
+		if ( is_wp_error( $payment ) ) {
 			$error = $payment->get_error_message();
 			if ( ! in_array( $payment->get_error_code(), array( 'api_error', 'customer_error', 'internal_error', 'tap_error' ) ) ) {
 				$error = __( 'Could not process your order. Please try later, or use other payment gateway.', 'woocommerce-gateway-tap' );
@@ -158,15 +142,25 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 			return;
 		}
 
-		if ( ! isset( $payment['status'] ) || 'INITIATED' === $payment['status'] ) {
-			wc_add_notice( __( 'Sorry, we can not process this card. Your card required redirection to tap, which is not impelemted in our checkout system.', 'woocommerce-gateway-tap' ), 'error' );
-			return;
-		}
+		// Delete unwanted data.
+		delete_post_meta( $order->get_id(), '_tap_payment_url' );
+		delete_post_meta( $order->get_id(), '_tap_payment_url_expires' );
 
-		$payment = wc_clean( $payment );
+		// Cleanup payment data.
+		// $payment = wc_clean( $payment );
 
-		// Payment captured
-		if ( 'CAPTURED' === $payment['status'] ) {
+		$redirect_url = $order->get_checkout_order_received_url();
+
+		if ( 'INITIATED' === $payment['status'] ) {
+			$redirect_url = urldecode( $payment['transaction']['url'] );
+
+			// Store them if customer fails the payment but want to continue again through my-account orders
+			update_post_meta( $order->get_id(), '_tap_payment_url', $redirect_url );
+			update_post_meta( $order->get_id(), '_tap_payment_url_expires', time() + 1800 );
+
+			$this->api_handler->tap_status_initiated( $order, $payment );
+
+		} elseif ( 'CAPTURED' === $payment['status'] ) {
 			$this->api_handler->tap_status_captured( $order, $payment );
 
 		} elseif ( 'CANCELLED' === $payment['status'] ) {
@@ -179,7 +173,7 @@ class WC_Gateway_Tap extends WC_Payment_Gateway {
 		return array(
 			'result'   => 'success',
 			'messages' => '<div class="woocommerce-info">' . __( 'Payment Completed.', 'woocommerce-gateway-tap' ) . '</div>',
-			'redirect' => $order->get_checkout_order_received_url(),
+			'redirect' => $redirect_url
 		);
 	}
 

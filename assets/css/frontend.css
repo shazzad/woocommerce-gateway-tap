@@ -6,6 +6,13 @@
     vertical-align: middle;
 }
 
+/* WooCommerce */
+.tap-thankyou-order-failed-reason{
+	color: red;
+	padding: 10px 15px;
+	border: 1px solid red;
+}
+
 /* Tap Payments */
 .tap-test-mode-title{
 	color:red;

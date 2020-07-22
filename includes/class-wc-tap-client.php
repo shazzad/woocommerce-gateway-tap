@@ -113,13 +113,27 @@ class WC_Tap_Client {
 			$phone_number = substr( $phone_number, strlen( $country_code ) );
 		}
 
+		$threed_secure = false;
+		if ( in_array( $order->get_billing_country(), array( 'SA' ) ) ) {
+			$threed_secure = true;
+		}
+
+		$customer = array(
+			'first_name'  => $order->get_billing_first_name(),
+			'last_name'   => $order->get_billing_last_name(),
+			'email'       => $order->get_billing_email(),
+			'phone'       => array(
+				'country_code' => $country_code,
+				'number'       => $phone_number
+			)
+		);
+
 		$data = array(
 			'amount'               => $order->get_total(),
 			'currency'             => $order->get_currency(),
-			'threeDSecure'         => true,
+			'threeDSecure'         => $threed_secure,
 			'save_card'            => false,
 			'description'          => $description,
-			'statement_descriptor' => 'Sample',
 			'reference' => array(
 				'order' => $order->get_id()
 			),
@@ -127,15 +141,7 @@ class WC_Tap_Client {
 				'email' => false,
 				'sms' => false
 			),
-			'customer' => array(
-				'first_name'  => $order->get_billing_first_name(),
-				'last_name'   => $order->get_billing_last_name(),
-				'email'       => $order->get_billing_email(),
-				'phone'       => array(
-					'country_code' => $country_code,
-					'number'       => $phone_number
-				)
-			),
+			'customer' => $customer,
 			'source' => array(
 				'id' => $token
 			),
@@ -144,7 +150,28 @@ class WC_Tap_Client {
 			)
 		);
 
-		return $this->request( 'charges', 'POST', $data );
+		$response = $this->request( 'charges', 'POST', $data );
+
+		// Tap 3d secutiry is complicated.
+		$second_request = false;
+		if ( is_wp_error( $response ) ) {
+			$error_data = $response->get_error_data( 'api_error' );
+			wc_tap()->log( wc_print_r( $error_data, true ) );
+
+			if ( isset( $error_data['code'] ) && 1109 === $error_data['code'] ) {
+				$second_request = true;
+			}
+
+		} elseif ( isset( $response['response'] ) && isset( $response['response']['code'] ) && 504 === absint( $response['response']['code'] ) ) {
+			$second_request = true;
+		}
+
+		if ( $second_request ) {
+			$data['threeDSecure'] = ! $threed_secure;
+			$response = $this->request( 'charges', 'POST', $data );
+		}
+
+		return $response;
 	}
 
 	/**
@@ -153,8 +180,8 @@ class WC_Tap_Client {
 	 * @param  WC_Order $order Order object.
 	 * @return string
 	 */
-	public function get_order( $order_id ) {
-		return $this->request( "orders/{$order_id}" );
+	public function get_charge( $charge_id ) {
+		return $this->request( "charges/{$charge_id}" );
 	}
 
 	/**
@@ -164,9 +191,13 @@ class WC_Tap_Client {
 	 * @return string
 	 */
 	private function request( $path = '', $method = 'get', $data = array() ) {
-		wc_tap()->log( 'Tap API: Post ' . $path );
-		wc_tap()->log( print_r( $data, true ) );
-		#return new WP_Error( 'uff', __('Dam') );
+		$method = strtoupper( $method );
+
+		wc_tap()->log( 'Tap API ' . $method . ' : ' . $path );
+
+		if ( $method === 'POST' ) {
+			wc_tap()->log( wc_print_r( $data, true ) );
+		}
 
 		$url = $this->endpoint . '/' . $path;
 
@@ -205,12 +236,12 @@ class WC_Tap_Client {
 		// Code other than 200 is unacceptable.
 		if ( 200 !== $code ) {
 			if ( isset( $data['status'] ) && 'fail' === $data['status'] ) {
-				return new WP_Error( 'api_error', $data['message'], array( 'type' => $data['type'] ) );
+				return new WP_Error( 'api_error', $data['message'], array( 'type' => (string) $data['type'] ) );
 
 			} elseif ( isset( $data['errors'] ) ) {
 				$wp_error = new WP_Error();
 				foreach ( $data['errors'] as $error ) {
-					$wp_error->add( 'api_error', $error['description'], array( 'code' => $error['code'] ) );
+					$wp_error->add( 'api_error', $error['description'], array( 'code' => (int) $error['code'] ) );
 				}
 
 				return $wp_error;

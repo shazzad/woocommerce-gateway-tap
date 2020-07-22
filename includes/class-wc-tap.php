@@ -13,7 +13,7 @@ final class WC_Tap {
 	/**
 	 * @var plugin version
 	 */
-	public $version = '1.0.0';
+	public $version = '1.0.1';
 
 	/**
 	 * @var Singleton The reference the *Singleton* instance of this class
@@ -86,7 +86,14 @@ final class WC_Tap {
 			self::$settings = get_option( 'woocommerce_tap_settings', array() );
 		}
 
-		# WC_Tap_Hooks::init();
+		// handle payment through cron jobs
+		new WC_Tap_Cron_Handler();
+
+		// handle payment through thank you page
+		new WC_Tap_Thankyou_Handler();
+
+		// Debugger
+		WC_Tap_Debugger::init();
 	}
 
 	/**
@@ -95,11 +102,14 @@ final class WC_Tap {
 	private function includes() {
 		require WC_TAP_DIR . '/includes/class-wc-tap-utils.php';
 		require WC_TAP_DIR . '/includes/class-wc-tap-client.php';
-		#require WC_TAP_DIR . '/includes/class-wc-tap-hooks.php';
 
 		require WC_TAP_DIR . '/includes/class-wc-tap-response.php';
+		require WC_TAP_DIR . '/includes/class-wc-tap-cron-handler.php';
+		require WC_TAP_DIR . '/includes/class-wc-tap-thankyou-handler.php';
 		require WC_TAP_DIR . '/includes/class-wc-tap-api-handler.php';
 		require WC_TAP_DIR . '/includes/class-wc-gateway-tap.php';
+
+		require WC_TAP_DIR . '/includes/class-wc-tap-debugger.php';
 	}
 
 	/**

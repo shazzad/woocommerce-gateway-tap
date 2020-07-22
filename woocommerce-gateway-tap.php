@@ -2,7 +2,7 @@
 /*
  * Plugin Name: WooCommerce Tap Gateway
  * Description: Take payments using Tap mobile wallet service.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Shazzad Hossain Khan
  * Requires at least: 5.4.2
  * Tested up to: 5.4.2
